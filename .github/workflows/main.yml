@@ -3,10 +3,14 @@ name: Scrape Google Search Results
 on:
   schedule:
     - cron: '0 0 * * *'  # Run daily
+  workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        location: ['US']
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -22,4 +26,4 @@ jobs:
           pip install requests
 
       - name: Run web scraping script
-        run: python scrape_google.py
+        run: python scrape_google.py ${{ matrix.location }}
