@@ -22,17 +22,24 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pandas
           pip install beautifulsoup4
           pip install selenium
+          pip install pandas
+
+      - name: Download ChromeDriver
+        run: |
+          wget https://chromedriver.storage.googleapis.com/96.0.4664.45/chromedriver_linux64.zip
+          unzip chromedriver_linux64.zip
+
+      - name: Move ChromeDriver to PATH
+        run: |
+          mv chromedriver /usr/local/bin/
 
       - name: Run web scraping script
-        run: |
-          python scrape_google.py ${{ matrix.location }}
-          python save_as_pickle.py
+        run: python scrape_google.py ${{ matrix.location }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: scraped-results
-          path: test_results.pickle
+          name: warehouse-jobs
+          path: warehouse_jobs.parquet  # Path to the Parquet file
