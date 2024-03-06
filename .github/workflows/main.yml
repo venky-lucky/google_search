@@ -26,14 +26,14 @@ jobs:
           pip install selenium
           pip install pandas
 
-      - name: Download ChromeDriver
-        run: |
-          wget https://chromedriver.storage.googleapis.com/96.0.4664.45/chromedriver_linux64.zip
-          unzip chromedriver_linux64.zip
-
-      - name: Move ChromeDriver to PATH
-        run: |
-          mv chromedriver /usr/local/bin/
+      - name: Download and set up ChromeDriver
+        uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          owner: wimg
+          repo: browser-updater
+          asset_glob: 'chromedriver_linux64.zip'
+          download_dir: 'chromedriver'
 
       - name: Run web scraping script
         run: python scrape_google.py ${{ matrix.location }}
