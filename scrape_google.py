@@ -7,14 +7,7 @@ def get_links_from_search_results(query, page):
     page.wait_for_selector("#rso")
     search_results_html = page.content()
     links = [result.find('a').get('href') if result.find('a') else None for result in BeautifulSoup(search_results_html, 'html.parser').select("#rso > div")]
-    gfj_index = None
-    print(len(links))
-    if links:  # Check if links is not empty before iterating
-        for link in links:
-            if 'ibp=htl' in link:
-                gfj_index = links.index(link) 
-                break
-    return links if links else [], gfj_index
+    return links
     
 def get_search_results(query, page):
     page.goto(f"https://www.google.com/search?q={query}")
@@ -45,19 +38,13 @@ if __name__ == "__main__":
         for i in range(len(df[1:3])):
             query = df['Title'].iloc[i] + f" jobs near"
             job_data = get_search_results(query, page)
-            links,gfj_index = get_links_from_search_results(query, page)
-            org_title = df['Title'].iloc[i]
-            
+            links = get_links_from_search_results(query, page)
+            gfj_index = None
+            org_title = df['Title'].iloc[i]            
             for title, url, listing_html in job_data:
                 results.append((org_title, title, url, listing_html, links, gfj_index))
-
-        # Convert the results to a DataFrame
         df_results = pd.DataFrame(results, columns=["Org_Title", "Title", "URL", "Listing_HTML", "Links", "GFJ_Index"])
-
-        # Save the DataFrame as a Parquet file
         df_results.to_parquet("test_results.parquet")
-
         print("Data extraction complete. Check 'test_results.parquet'")
-
         context.close()
         browser.close()
