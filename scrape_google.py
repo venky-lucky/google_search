@@ -8,25 +8,34 @@ def get_links_from_search_results(query, page):
     search_results_html = page.content()
     links = [result.find('a').get('href') if result.find('a') else None for result in BeautifulSoup(search_results_html, 'html.parser').select("#rso > div")]
     return links
-    
-def get_search_results(query, page):
+
+def get_location(query, page):
+    page.goto(f"https://www.google.com/search?q={query}")
+    text_locator = page.locator("//span[@class=\"dfB0uf\"]")
+    try:
+        location = text_locator.inner_text()
+    except:
+        location = 'Unknown'
+    return location
+
+def get_search_results(query, page, location):
     page.goto(f"https://www.google.com/search?q={query}")
     page.wait_for_selector(".tF2Cxc")
+
     search_results_html = page.content()
     search_soup = BeautifulSoup(search_results_html, 'html.parser')
     search_results = search_soup.find_all('div', class_='tF2Cxc')[:3]
-    job_data = []
 
+    job_data = []
     for result in search_results:
         title = result.find('h3').text
         url = result.find('a')['href']
-        listing_html = page.content()
-        job_data.append((title, url, listing_html))
-
+        listing_html = result.prettify()
+        job_data.append((title, url, location, listing_html))
+    
     return job_data
 
 if __name__ == "__main__":
-      
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context()
@@ -35,15 +44,21 @@ if __name__ == "__main__":
         df = pd.read_csv("Job_Titles.csv")
         results = []
 
-        for i in range(len(df[1:3])):
-            query = df['Title'].iloc[i] + f" jobs near"
-            job_data = get_search_results(query, page)
+        for query in df['Title'].iloc[1:10]:
+            query += " jobs near me"
+            location = get_location(query, page)
+            job_data = get_search_results(query, page, location)
             links = get_links_from_search_results(query, page)
             gfj_index = None
-            org_title = df['Title'].iloc[i]            
-            for title, url, listing_html in job_data:
-                results.append((org_title, title, url, listing_html, links, gfj_index))
-        df_results = pd.DataFrame(results, columns=["Org_Title", "Title", "URL", "Listing_HTML", "Links", "GFJ_Index"])
+            if links is not None:
+                for i, s in enumerate(links):
+                    if s is not None and 'ibp=htl' in s:
+                        gfj_index = i
+                        break
+            for title, url, location, listing_html in job_data:
+                results.append((query, title, url, location, listing_html, links, gfj_index))
+        
+        df_results = pd.DataFrame(results, columns=["Query", "Title", "URL", "Location", "Listing_HTML", "Links","GFJ_Index"])
         df_results.to_parquet("test_results.parquet")
         print("Data extraction complete. Check 'test_results.parquet'")
         context.close()
