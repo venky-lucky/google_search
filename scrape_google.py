@@ -1,62 +1,61 @@
 import pandas as pd
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
 import pickle
 
-def get_links_from_search_results(query):
-    driver = webdriver.Chrome()  
-    search_url = f"https://www.google.com/search?q={query}"
+def get_links_from_search_results(query, page):
+    page.goto(f"https://www.google.com/search?q={query}")
+    page.wait_for_selector("#rso")
+    search_results_html = page.content()
+    links = [result.find('a').get('href') if result.find('a') else None for result in BeautifulSoup(search_results_html, 'html.parser').select("#rso > div")]
+    if links:
+        gfj_index = next((i for i, link in enumerate(links) if 'ibp=htl' in link), None)
+    else:
+        gfj_index = None
+    return links if links else [], gfj_index
 
-    try:
-        driver.get(search_url)
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "#rso")))
-        search_results_html = driver.page_source
-        links = [result.find('a').get('href') if result.find('a') else None for result in BeautifulSoup(search_results_html, 'html.parser').select("#rso > div")]
-    finally:
-        driver.quit()
-    return links
     
-def get_search_results(query, pages):
-    driver = webdriver.Chrome()  
-    search_url = f"https://www.google.com/search?q={query}"
+def get_search_results(query, page):
+    page.goto(f"https://www.google.com/search?q={query}")
+    page.wait_for_selector(".tF2Cxc")
+    search_results_html = page.content()
+    search_soup = BeautifulSoup(search_results_html, 'html.parser')
+    search_results = search_soup.find_all('div', class_='tF2Cxc')[:3]
     job_data = []
 
-    try:
-        driver.get(search_url)
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "tF2Cxc")))
-        search_results_html = driver.page_source
-        search_soup = BeautifulSoup(search_results_html, 'html.parser')
-        search_results = search_soup.find_all('div', class_='tF2Cxc')[:3]
-
-        for result in search_results:
-            title = result.find('h3').text
-            url = result.find('a')['href']
-            listing_html = driver.page_source
-            job_data.append((title, url, listing_html))
-
-    finally:
-        driver.quit()
+    for result in search_results:
+        title = result.find('h3').text
+        url = result.find('a')['href']
+        listing_html = page.content()
+        job_data.append((title, url, listing_html))
 
     return job_data
 
 if __name__ == "__main__":
-    df = pd.read_csv("Job_Titles.csv")
-    results = []
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
+        context = browser.new_context()
+        page = context.new_page()
 
-    for i in range(len(df[1:3])):
-        query = df['Title'].iloc[i] + " jobs near me"
-        job_data = get_search_results(query, 1)
-        links = get_links_from_search_results(query)
-        org_title = df['Title'].iloc[i]
-        gfj_index = None if links is None else next((i for i, link in enumerate(links) if 'ibp=htl' in link), None)
-        if gfj_index != None:
-            gfj_index+=1
-        for title, url, listing_html in job_data:
-            results.append((org_title, title, url, listing_html, links, gfj_index))
+        df = pd.read_csv("Job_Titles.csv")
+        results = []
 
-    with open('test_results.pickle', 'wb') as f:
-        pickle.dump(results, f)
+        for i in range(len(df[1:3])):
+            query = df['Title'].iloc[i] + " jobs near me"
+            job_data = get_search_results(query, page)
+            links,gfj_index = get_links_from_search_results(query, page)
+            org_title = df['Title'].iloc[i]
+            
+            for title, url, listing_html in job_data:
+                results.append((org_title, title, url, listing_html, links, gfj_index))
 
+        # Convert the results to a DataFrame
+        df_results = pd.DataFrame(results, columns=["Org_Title", "Title", "URL", "Listing_HTML", "Links", "GFJ_Index"])
+
+        # Save the DataFrame as a Parquet file
+        df_results.to_parquet("test_results.parquet")
+
+        print("Data extraction complete. Check 'test_results.parquet'")
+
+        context.close()
+        browser.close()
