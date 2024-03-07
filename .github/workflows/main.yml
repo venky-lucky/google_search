@@ -8,9 +8,6 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        location: ['US']
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -26,11 +23,12 @@ jobs:
           pip install playwright
           pip install pandas
           pip install pyarrow
+          pip install tqdm
           playwright install
 
       - name: Run web scraping script
         run: |
-          python scrape_google.py ${{ matrix.location }}
+          python scrape_google.py 
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
