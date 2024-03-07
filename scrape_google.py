@@ -1,7 +1,7 @@
 import pandas as pd
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
-import pickle
+import sys
 
 def get_links_from_search_results(query, page):
     page.goto(f"https://www.google.com/search?q={query}")
@@ -32,8 +32,9 @@ def get_search_results(query, page):
     return job_data
 
 if __name__ == "__main__":
+      
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
         context = browser.new_context()
         page = context.new_page()
 
@@ -41,7 +42,7 @@ if __name__ == "__main__":
         results = []
 
         for i in range(len(df[1:3])):
-            query = df['Title'].iloc[i] + " jobs near me"
+            query = df['Title'].iloc[i] + f" jobs near"
             job_data = get_search_results(query, page)
             links,gfj_index = get_links_from_search_results(query, page)
             org_title = df['Title'].iloc[i]
