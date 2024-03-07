@@ -1,6 +1,7 @@
 import pandas as pd
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
+from tqdm import tqdm
 
 def get_links_from_search_results(query, page):
     page.goto(f"https://www.google.com/search?q={query}")
@@ -14,7 +15,8 @@ def get_location(query, page):
     text_locator = page.locator("//span[@class=\"dfB0uf\"]")
     try:
         location = text_locator.inner_text()
-    except:
+    except Exception as e:
+        print(f"Error getting location for query '{query}': {e}")
         location = 'Unknown'
     return location
 
@@ -44,20 +46,23 @@ if __name__ == "__main__":
         df = pd.read_csv("Job_Titles.csv")
         results = []
 
-        for query in df['Title']:
-            query += " jobs near me"
-            location = get_location(query, page)
-            job_data = get_search_results(query, page, location)
-            links = get_links_from_search_results(query, page)
-            gfj_index = None
-            if links is not None:
-                for i, s in enumerate(links):
-                    if s is not None and 'ibp=htl' in s:
-                        gfj_index = i+1
-                        break
-            for title, url, location, listing_html in job_data:
-                results.append((query, title, url, location, listing_html, links, gfj_index))
-        
+        for query in tqdm(df['Title'].iloc[1:20], desc="Processing rows", unit="row"):
+            try:
+                query += " jobs near me"
+                location = get_location(query, page)
+                job_data = get_search_results(query, page, location)
+                links = get_links_from_search_results(query, page)
+                gfj_index = None
+                if links is not None:
+                    for i, s in enumerate(links):
+                        if s is not None and 'ibp=htl' in s:
+                            gfj_index = i+1
+                            break
+                for title, url, location, listing_html in job_data:
+                    results.append((query, title, url, location, listing_html, links, gfj_index))
+            except Exception as e:
+                print(f"Exception occurred for query '{query}': {e}")
+
         df_results = pd.DataFrame(results, columns=["Query", "Title", "URL", "Location", "Listing_HTML", "Links","GFJ_Index"])
         df_results.to_parquet("test_results.parquet")
         print("Data extraction complete. Check 'test_results.parquet'")
