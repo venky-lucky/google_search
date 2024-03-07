@@ -1,19 +1,20 @@
 import pandas as pd
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
-import sys
 
 def get_links_from_search_results(query, page):
     page.goto(f"https://www.google.com/search?q={query}")
     page.wait_for_selector("#rso")
     search_results_html = page.content()
     links = [result.find('a').get('href') if result.find('a') else None for result in BeautifulSoup(search_results_html, 'html.parser').select("#rso > div")]
-    if links:
-        gfj_index = next((i for i, link in enumerate(links) if 'ibp=htl' in link), None)
-    else:
-        gfj_index = None
+    gfj_index = None
+    print(len(links))
+    if links:  # Check if links is not empty before iterating
+        for link in links:
+            if 'ibp=htl' in link:
+                gfj_index = links.index(link) 
+                break
     return links if links else [], gfj_index
-
     
 def get_search_results(query, page):
     page.goto(f"https://www.google.com/search?q={query}")
