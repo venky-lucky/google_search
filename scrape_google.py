@@ -44,7 +44,7 @@ if __name__ == "__main__":
         df = pd.read_csv("Job_Titles.csv")
         results = []
 
-        for query in df['Title'].iloc[1:10]:
+        for query in df['Title']:
             query += " jobs near me"
             location = get_location(query, page)
             job_data = get_search_results(query, page, location)
@@ -53,7 +53,7 @@ if __name__ == "__main__":
             if links is not None:
                 for i, s in enumerate(links):
                     if s is not None and 'ibp=htl' in s:
-                        gfj_index = i
+                        gfj_index = i+1
                         break
             for title, url, location, listing_html in job_data:
                 results.append((query, title, url, location, listing_html, links, gfj_index))
