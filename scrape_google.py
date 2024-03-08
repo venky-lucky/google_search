@@ -46,7 +46,7 @@ if __name__ == "__main__":
         df = pd.read_csv("Job_Titles.csv")
         results = []
 
-        for query in tqdm(df['Title'].sample(3), desc="Processing rows", unit="row"):
+        for query in tqdm(df['Title'].sample(50), desc="Processing rows", unit="row"):
             try:
                 query += " jobs near me"
                 location = get_location(query, page)
