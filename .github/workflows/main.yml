@@ -8,6 +8,8 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:focal
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -19,16 +21,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install beautifulsoup4
-          pip install playwright
           pip install pandas
-          pip install pyarrow
-          pip install tqdm
-          playwright install
 
       - name: Run web scraping script
         run: |
-          python scrape_google.py 
+          python scrape_google.py
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
